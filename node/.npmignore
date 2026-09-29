@@ -1,0 +1,1 @@
+# Intentionally empty: overrides .gitignore so node/dist ships in the npm package.

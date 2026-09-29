@@ -1,0 +1,25 @@
+{
+  "name": "@iship/sdk",
+  "version": "1.0.0",
+  "description": "Client for the iShip shipping API",
+  "license": "MIT",
+  "type": "module",
+  "main": "./node/dist/index.js",
+  "types": "./node/dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./node/dist/index.d.ts",
+      "default": "./node/dist/index.js"
+    }
+  },
+  "files": ["node/dist"],
+  "engines": { "node": ">=18" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcomtech/iship-sdk.git"
+  },
+  "scripts": {
+    "prepare": "npm --prefix node install --no-audit --no-fund && npm --prefix node run build",
+    "test": "npm --prefix node test"
+  }
+}

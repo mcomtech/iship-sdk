@@ -10,6 +10,8 @@ namespace IShip;
  * $customOrderId is required on purpose: iShip rejects a repeat of the same value,
  * so retrying a create whose response you never received cannot produce a second
  * parcel or spend credit twice. Use your own order number and reuse it on retry.
+ *
+ * A COD shipment ($codAmount > 0) must also list its goods in $products.
  */
 final class CreateOrder
 {
@@ -33,6 +35,14 @@ final class CreateOrder
         }
         if ($insured && ($productValue === null || $productValue <= 0)) {
             throw new \InvalidArgumentException('ซื้อประกันต้องระบุ productValue');
+        }
+        if ($codAmount > 0 && $products === []) {
+            throw new \InvalidArgumentException('รายการ COD ต้องระบุ products (รายละเอียดสินค้า) ด้วย');
+        }
+        foreach ($products as $product) {
+            if (!$product instanceof Product) {
+                throw new \InvalidArgumentException('products ต้องเป็น IShip\\Product ทั้งหมด');
+            }
         }
     }
 

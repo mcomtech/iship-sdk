@@ -50,7 +50,15 @@ func main() {
 		To:            to,
 		Parcel:        box,
 		CategoryID:    iship.CategoryClothing,
-		CODAmount:     590,
+		CODAmount:     590, // COD requires the goods to be listed below
+		Products: []iship.Product{{
+			Name:     "เสื้อยืด",
+			Quantity: 1,
+			Price:    590,
+			WeightKg: 0.3,
+			Color:    "ดำ",          // required; use "-" when there is no colour
+			Size:     "30 x 40 x 5", // or WidthCm / LengthCm / HeightCm
+		}},
 	})
 	if err != nil {
 		panic(err)

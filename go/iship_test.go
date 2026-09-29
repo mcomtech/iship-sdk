@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -154,6 +155,7 @@ func TestCreateOrderRequiresDuplicateGuard(t *testing.T) {
 		Parcel:        Parcel{WeightKg: 1, WidthCm: 14, LengthCm: 20, HeightCm: 6},
 		CategoryID:    CategoryClothing,
 		CODAmount:     590,
+		Products:      []Product{{Name: "เสื้อยืด", Quantity: 1, Price: 590, WeightKg: 0.3, Color: "ดำ", Size: "30 x 40 x 5"}},
 	}
 
 	created, err := client.CreateOrder(context.Background(), order)
@@ -173,6 +175,82 @@ func TestCreateOrderRequiresDuplicateGuard(t *testing.T) {
 	order.CustomOrderID = ""
 	if _, err := New(WithToken("t")).CreateOrder(context.Background(), order); err == nil {
 		t.Fatal("expected an error when CustomOrderID is empty")
+	}
+}
+
+func TestCODRequiresProductDetails(t *testing.T) {
+	order := CreateOrder{
+		CustomOrderID: "SHOP-1003", CourierCode: "FlashLive",
+		From: bangkokAddress(), To: chiangmaiAddress(),
+		Parcel: Parcel{WeightKg: 1, WidthCm: 14, LengthCm: 20, HeightCm: 6}, CODAmount: 590,
+	}
+
+	if _, err := New(WithToken("t")).CreateOrder(context.Background(), order); err == nil {
+		t.Fatal("expected an error when a COD order lists no products")
+	}
+}
+
+func TestProductSizeEitherWay(t *testing.T) {
+	client, _, payloads := stub(t, `{"status":true,"data":{"tracking_number":"TH1"}}`)
+
+	if _, err := client.CreateOrder(context.Background(), CreateOrder{
+		CustomOrderID: "SHOP-1004", CourierCode: "FlashLive",
+		From: bangkokAddress(), To: chiangmaiAddress(),
+		Parcel: Parcel{WeightKg: 1, WidthCm: 14, LengthCm: 20, HeightCm: 6}, CODAmount: 1200,
+		Products: []Product{
+			{Name: "ALBUM 1", Quantity: 1, Price: 1200, WeightKg: 0.3, Color: "BLUE", WidthCm: 12, LengthCm: 12, HeightCm: 2},
+			{Name: "ALBUM 2", Quantity: 2, Price: 600, WeightKg: 0.3, Color: "RED", Size: "12 x 12 x 2"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var sent struct {
+		Products []map[string]any `json:"products"`
+	}
+	if err := json.Unmarshal([]byte((*payloads)[0]), &sent); err != nil {
+		t.Fatal(err)
+	}
+
+	if sent.Products[0]["product_width"] != float64(12) {
+		t.Errorf("dimensions should be sent when Size is empty: %v", sent.Products[0])
+	}
+	if _, ok := sent.Products[0]["product_size"]; ok {
+		t.Errorf("product_size should be absent: %v", sent.Products[0])
+	}
+	if sent.Products[1]["product_size"] != "12 x 12 x 2" {
+		t.Errorf("Size should replace the dimensions: %v", sent.Products[1])
+	}
+	if _, ok := sent.Products[1]["product_width"]; ok {
+		t.Errorf("product_width should be absent when Size is set: %v", sent.Products[1])
+	}
+	if sent.Products[0]["product_color"] != "BLUE" || sent.Products[0]["product_weight"] != 0.3 {
+		t.Errorf("unexpected product payload: %v", sent.Products[0])
+	}
+}
+
+func TestProductValidation(t *testing.T) {
+	valid := Product{Name: "ALBUM", Quantity: 1, Price: 1200, WeightKg: 0.3, Color: "BLUE", Size: "1 x 1 x 1"}
+
+	cases := map[string]func(Product) Product{
+		"no name":        func(p Product) Product { p.Name = ""; return p },
+		"no colour":      func(p Product) Product { p.Color = ""; return p },
+		"no weight":      func(p Product) Product { p.WeightKg = 0; return p },
+		"no price":       func(p Product) Product { p.Price = 0; return p },
+		"quantity 0":     func(p Product) Product { p.Quantity = 0; return p },
+		"quantity 1000":  func(p Product) Product { p.Quantity = 1000; return p },
+		"size too long":  func(p Product) Product { p.Size = strings.Repeat("x", 129); return p },
+		"no size at all": func(p Product) Product { p.Size = ""; return p },
+		"zero dimension": func(p Product) Product { p.Size = ""; p.WidthCm, p.LengthCm, p.HeightCm = 12, 12, 0; return p },
+	}
+
+	if err := valid.validate(); err != nil {
+		t.Fatalf("the valid product was rejected: %v", err)
+	}
+	for name, breakIt := range cases {
+		if err := breakIt(valid).validate(); err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
 	}
 }
 

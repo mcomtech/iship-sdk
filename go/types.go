@@ -57,25 +57,68 @@ func (p Parcel) payload() map[string]any {
 }
 
 // Product is one line item inside a COD shipment.
+//
+// iShip requires every field except Remark, and it wants the item's size one of
+// two ways: either Size as free text ("12 x 12 x 2", at most 128 bytes) or all
+// three of WidthCm, LengthCm and HeightCm. Size wins when both are given.
 type Product struct {
 	Name     string
 	Quantity int
 	Price    float64
 	WeightKg float64
-	Color    string
+	// Color is required by iShip; use a placeholder such as "-" when the goods
+	// have no colour.
+	Color string
+	// Size is free text, an alternative to the three dimensions below.
+	Size     string
+	WidthCm  float64
+	LengthCm float64
+	HeightCm float64
+	Remark   string
+}
+
+const (
+	maxProductSizeLength = 128
+	maxProductQuantity   = 999
+)
+
+func (p Product) validate() error {
+	switch {
+	case p.Name == "":
+		return fmt.Errorf("iship: ต้องระบุชื่อสินค้า")
+	case p.Quantity < 1 || p.Quantity > maxProductQuantity:
+		return fmt.Errorf("iship: สินค้า %q: จำนวนสินค้าต้องอยู่ระหว่าง 1 ถึง %d", p.Name, maxProductQuantity)
+	case p.Price <= 0:
+		return fmt.Errorf("iship: สินค้า %q: ต้องระบุราคาสินค้ามากกว่า 0", p.Name)
+	case p.WeightKg <= 0:
+		return fmt.Errorf("iship: สินค้า %q: ต้องระบุน้ำหนักสินค้ามากกว่า 0", p.Name)
+	case p.Color == "":
+		return fmt.Errorf("iship: สินค้า %q: ต้องระบุสีสินค้า", p.Name)
+	case p.Size != "" && len(p.Size) > maxProductSizeLength:
+		return fmt.Errorf("iship: สินค้า %q: ขนาดสินค้าไม่เกิน %d ตัวอักษร", p.Name, maxProductSizeLength)
+	case p.Size == "" && (p.WidthCm <= 0 || p.LengthCm <= 0 || p.HeightCm <= 0):
+		return fmt.Errorf("iship: สินค้า %q: ต้องระบุ Size หรือ WidthCm, LengthCm และ HeightCm ครบทั้งสามค่า", p.Name)
+	}
+	return nil
 }
 
 func (p Product) payload() map[string]any {
 	item := map[string]any{
-		"product_name":  p.Name,
-		"product_qty":   p.Quantity,
-		"product_price": p.Price,
+		"product_name":   p.Name,
+		"product_qty":    p.Quantity,
+		"product_price":  p.Price,
+		"product_weight": p.WeightKg,
+		"product_color":  p.Color,
 	}
-	if p.WeightKg > 0 {
-		item["product_weight"] = p.WeightKg
+	if p.Size != "" {
+		item["product_size"] = p.Size
+	} else {
+		item["product_width"] = p.WidthCm
+		item["product_length"] = p.LengthCm
+		item["product_height"] = p.HeightCm
 	}
-	if p.Color != "" {
-		item["product_color"] = p.Color
+	if p.Remark != "" {
+		item["product_remark"] = p.Remark
 	}
 	return item
 }
@@ -96,6 +139,7 @@ type CreateOrder struct {
 	// CategoryID is one of the Category constants.
 	CategoryID int
 	// CODAmount is the amount to collect on delivery, in baht. Zero means no COD.
+	// A COD shipment must also list its goods in Products.
 	CODAmount float64
 	Remark    string
 	Products  []Product
@@ -112,6 +156,14 @@ func (o CreateOrder) payload() (map[string]any, error) {
 	}
 	if o.Insured && o.ProductValue <= 0 {
 		return nil, fmt.Errorf("iship: ซื้อประกันต้องระบุ ProductValue")
+	}
+	if o.CODAmount > 0 && len(o.Products) == 0 {
+		return nil, fmt.Errorf("iship: รายการ COD ต้องระบุ Products (รายละเอียดสินค้า) ด้วย")
+	}
+	for _, product := range o.Products {
+		if err := product.validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	platform := o.PlatformName

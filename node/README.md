@@ -3,7 +3,7 @@
 Requires Node 18+ (uses the built-in `fetch`). TypeScript types included.
 
 ```bash
-npm install github:mcomtech/iship-sdk#v1.0.0
+npm install github:mcomtech/iship-sdk#v1.1.0
 ```
 
 The package is built during `npm install`, so that machine needs network access
@@ -37,7 +37,17 @@ const order = await iship.createOrder({
   to,
   parcel,
   categoryId: Category.Clothing,
-  codAmount: 590,
+  codAmount: 590, // COD requires the goods to be listed below
+  products: [
+    {
+      name: "เสื้อยืด",
+      quantity: 1,
+      price: 590,
+      weightKg: 0.3,
+      color: "ดำ",           // required; use "-" when there is no colour
+      size: "30 x 40 x 5",   // or widthCm / lengthCm / heightCm
+    },
+  ],
 });
 
 console.log(order.tracking_number, iship.labelUrl([order.tracking_number]));

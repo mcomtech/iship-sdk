@@ -117,6 +117,7 @@ test("createOrder sends the duplicate-guard id and requires one", async () => {
     parcel,
     categoryId: Category.Clothing,
     codAmount: 590,
+    products: [{ name: "เสื้อยืด", quantity: 1, price: 590, weightKg: 0.3, color: "ดำ", size: "30 x 40 x 5" }],
   });
 
   assert.equal(created.tracking_number, "TH0147XXXX");
@@ -128,6 +129,82 @@ test("createOrder sends the duplicate-guard id and requires one", async () => {
     () => client.createOrder({ customOrderId: "", courierCode: "FlashLive", from: bangkok, to: chiangmai, parcel }),
     ValidationError,
   );
+});
+
+test("COD requires product details", async () => {
+  const { client } = stub();
+
+  await assert.rejects(
+    () =>
+      client.createOrder({
+        customOrderId: "SHOP-1003",
+        courierCode: "FlashLive",
+        from: bangkok,
+        to: chiangmai,
+        parcel,
+        codAmount: 590,
+      }),
+    ValidationError,
+  );
+});
+
+test("a product may describe its size either way", async () => {
+  const { client, calls } = stub({ body: { status: true, data: { tracking_number: "TH1" } } });
+
+  await client.createOrder({
+    customOrderId: "SHOP-1004",
+    courierCode: "FlashLive",
+    from: bangkok,
+    to: chiangmai,
+    parcel,
+    codAmount: 1200,
+    products: [
+      { name: "ALBUM 1", quantity: 1, price: 1200, weightKg: 0.3, color: "BLUE", widthCm: 12, lengthCm: 12, heightCm: 2 },
+      { name: "ALBUM 2", quantity: 2, price: 600, weightKg: 0.3, color: "RED", size: "12 x 12 x 2" },
+    ],
+  });
+
+  const [first, second] = calls[0].body.products;
+  assert.equal(first.product_width, 12, "dimensions are sent when size is absent");
+  assert.equal("product_size" in first, false);
+  assert.equal(second.product_size, "12 x 12 x 2", "size replaces the dimensions");
+  assert.equal("product_width" in second, false);
+  assert.equal(first.product_color, "BLUE");
+  assert.equal(first.product_weight, 0.3);
+});
+
+test("every field iShip requires on a product is checked", async () => {
+  const { client } = stub();
+  const valid = { name: "ALBUM", quantity: 1, price: 1200, weightKg: 0.3, color: "BLUE", size: "1 x 1 x 1" };
+
+  const broken = {
+    "no name": { name: "" },
+    "no colour": { color: "" },
+    "no weight": { weightKg: 0 },
+    "no price": { price: 0 },
+    "quantity 0": { quantity: 0 },
+    "quantity 1000": { quantity: 1000 },
+    "size too long": { size: "x".repeat(129) },
+    "no size at all": { size: undefined },
+    "zero dimension": { size: undefined, widthCm: 12, lengthCm: 12, heightCm: 0 },
+  };
+
+  for (const [name, patch] of Object.entries(broken)) {
+    await assert.rejects(
+      () =>
+        client.createOrder({
+          customOrderId: "SHOP-1005",
+          courierCode: "FlashLive",
+          from: bangkok,
+          to: chiangmai,
+          parcel,
+          codAmount: 1200,
+          products: [{ ...valid, ...patch }],
+        }),
+      ValidationError,
+      name,
+    );
+  }
 });
 
 test("insurance requires a declared value", async () => {

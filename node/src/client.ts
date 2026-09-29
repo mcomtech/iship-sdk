@@ -14,6 +14,7 @@ import {
   Parcel,
   PickupInput,
   Price,
+  Product,
   Token,
   Trace,
   Tracking,
@@ -147,6 +148,10 @@ export class IShipClient {
     if (input.insured && !input.productValue) {
       throw new ValidationError("ซื้อประกันต้องระบุ productValue");
     }
+    if ((input.codAmount ?? 0) > 0 && !input.products?.length) {
+      throw new ValidationError("รายการ COD ต้องระบุ products (รายละเอียดสินค้า) ด้วย");
+    }
+    for (const product of input.products ?? []) validateProduct(product);
 
     const body: Record<string, unknown> = {
       platform_name: input.platformName ?? "iship-sdk-node",
@@ -159,13 +164,7 @@ export class IShipClient {
 
     if (input.remark) body.remark = input.remark;
     if (input.products?.length) {
-      body.products = input.products.map((product) => ({
-        product_name: product.name,
-        product_qty: product.quantity,
-        product_price: product.price,
-        ...(product.weightKg === undefined ? {} : { product_weight: product.weightKg }),
-        ...(product.color === undefined ? {} : { product_color: product.color }),
-      }));
+      body.products = input.products.map(productPayload);
     }
     if (input.insured) {
       body.is_insured = 1;
@@ -324,5 +323,45 @@ function routeFields(from: Address, to: Address, parcel: Parcel): Record<string,
     width: parcel.widthCm,
     length: parcel.lengthCm,
     height: parcel.heightCm,
+  };
+}
+
+const MAX_PRODUCT_SIZE_LENGTH = 128;
+const MAX_PRODUCT_QUANTITY = 999;
+
+function validateProduct(product: Product): void {
+  const fail = (message: string): never => {
+    throw new ValidationError(`สินค้า "${product.name}": ${message}`);
+  };
+
+  if (!product.name) fail("ต้องระบุชื่อสินค้า");
+  if (!(product.quantity >= 1 && product.quantity <= MAX_PRODUCT_QUANTITY)) {
+    fail(`จำนวนสินค้าต้องอยู่ระหว่าง 1 ถึง ${MAX_PRODUCT_QUANTITY}`);
+  }
+  if (!(product.price > 0)) fail("ต้องระบุราคาสินค้ามากกว่า 0");
+  if (!(product.weightKg > 0)) fail("ต้องระบุน้ำหนักสินค้ามากกว่า 0");
+  if (!product.color) fail("ต้องระบุสีสินค้า");
+
+  if (product.size) {
+    // iShip measures this limit in bytes, so Thai text counts more than its length.
+    if (Buffer.byteLength(product.size) > MAX_PRODUCT_SIZE_LENGTH) {
+      fail(`ขนาดสินค้าไม่เกิน ${MAX_PRODUCT_SIZE_LENGTH} ตัวอักษร`);
+    }
+  } else if (!(product.widthCm! > 0 && product.lengthCm! > 0 && product.heightCm! > 0)) {
+    fail("ต้องระบุ size หรือ widthCm, lengthCm และ heightCm ครบทั้งสามค่า");
+  }
+}
+
+function productPayload(product: Product): Record<string, unknown> {
+  return {
+    product_name: product.name,
+    product_qty: product.quantity,
+    product_price: product.price,
+    product_weight: product.weightKg,
+    product_color: product.color,
+    ...(product.size
+      ? { product_size: product.size }
+      : { product_width: product.widthCm, product_length: product.lengthCm, product_height: product.heightCm }),
+    ...(product.remark === undefined ? {} : { product_remark: product.remark }),
   };
 }

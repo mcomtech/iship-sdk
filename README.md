@@ -41,7 +41,7 @@ The Go module lives in the `go/` subdirectory, so its version tags are prefixed:
 ### Node
 
 ```bash
-npm install github:mcomtech/iship-sdk#v1.0.0
+npm install github:mcomtech/iship-sdk#v1.1.0
 ```
 
 ```ts
@@ -111,6 +111,25 @@ create a second parcel or spend credit twice. Reuse the same value when you retr
 default timeout is 120s and the SDK never retries a call that spends credit.
 
 **Environment switching.** Point `baseUrl` at `https://app-uat.iship.cloud` for UAT.
+
+## COD shipments
+
+When `codAmount` is greater than zero, iShip requires the goods to be listed in
+`products`, and every line item must carry **name, quantity (1–999), price,
+weight, colour** and a size. Colour has no sensible default, so pass a
+placeholder such as `"-"` when the goods have none.
+
+The size can be given either way, and the SDK sends whichever you fill in:
+
+| | Field(s) | Notes |
+| --- | --- | --- |
+| Free text | `size` | e.g. `"12 x 12 x 2"`, at most 128 bytes. Thai text costs 3 bytes per character. |
+| Separate | `widthCm`, `lengthCm`, `heightCm` | All three are required, each greater than zero. |
+
+`size` wins when both are supplied. `remark` is the only optional field.
+
+The SDK checks all of this before sending, so a mistake surfaces as a validation
+error in your own code rather than as `code 1004` from the API.
 
 ## Webhooks
 

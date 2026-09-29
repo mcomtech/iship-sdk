@@ -10,7 +10,7 @@ composer require iship/sdk:^1.0
 ## Quick start
 
 ```php
-use IShip\{Address, Category, Client, CreateOrder, Parcel};
+use IShip\{Address, Category, Client, CreateOrder, Parcel, Product};
 
 $iship = new Client($_ENV['ISHIP_TOKEN']);
 
@@ -29,7 +29,17 @@ $order = $iship->createOrder(new CreateOrder(
     to: $to,
     parcel: $box,
     categoryId: Category::CLOTHING,
-    codAmount: 590,
+    codAmount: 590,                   // COD requires the goods to be listed below
+    products: [
+        new Product(
+            name: 'เสื้อยืด',
+            quantity: 1,
+            price: 590,
+            weightKg: 0.3,
+            color: 'ดำ',              // required; use '-' when there is no colour
+            size: '30 x 40 x 5',      // or widthCm / lengthCm / heightCm
+        ),
+    ],
 ));
 
 echo $order['tracking_number'], PHP_EOL;

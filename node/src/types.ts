@@ -22,13 +22,27 @@ export interface Parcel {
   heightCm: number;
 }
 
-/** One line item inside a COD shipment. */
+/**
+ * One line item inside a COD shipment.
+ *
+ * iShip requires every field except `remark`, and it wants the item's size one of
+ * two ways: either `size` as free text ("12 x 12 x 2", at most 128 bytes) or all
+ * three of `widthCm`, `lengthCm` and `heightCm`. `size` wins when both are given.
+ */
 export interface Product {
   name: string;
+  /** 1–999. */
   quantity: number;
   price: number;
-  weightKg?: number;
-  color?: string;
+  weightKg: number;
+  /** Required by iShip; use a placeholder such as "-" when the goods have no colour. */
+  color: string;
+  /** Free-text size, an alternative to the three dimensions below. */
+  size?: string;
+  widthCm?: number;
+  lengthCm?: number;
+  heightCm?: number;
+  remark?: string;
 }
 
 /** Let iShip pick the courier from the account's area rules. */
@@ -48,7 +62,7 @@ export interface CreateOrderInput {
   parcel: Parcel;
   /** One of the Category values. */
   categoryId?: number;
-  /** Amount to collect on delivery, in baht. */
+  /** Amount to collect on delivery, in baht. A COD shipment must also list `products`. */
   codAmount?: number;
   remark?: string;
   products?: Product[];

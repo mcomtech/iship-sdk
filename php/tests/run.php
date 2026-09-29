@@ -23,6 +23,7 @@ use IShip\Http\Transport;
 use IShip\OrderQuery;
 use IShip\OrderStatus;
 use IShip\Parcel;
+use IShip\Product;
 use IShip\Webhook;
 
 /** Records the last request and replays canned responses. */
@@ -164,6 +165,7 @@ test('createOrder sends the duplicate-guard id and requires one', function () {
         parcel: new Parcel(1.0, 14, 20, 6),
         categoryId: Category::CLOTHING,
         codAmount: 590,
+        products: [new Product('เสื้อยืด', 1, 590, 0.3, 'ดำ', size: '30 x 40 x 5')],
     ));
 
     $sent = json_decode($transport->calls[0]['body'], true);
@@ -179,6 +181,69 @@ test('createOrder sends the duplicate-guard id and requires one', function () {
         to: chiangmai(),
         parcel: new Parcel(1.0, 14, 20, 6),
     ));
+});
+
+test('COD requires product details', function () {
+    assertThrows(InvalidArgumentException::class, fn () => new CreateOrder(
+        customOrderId: 'SHOP-1003',
+        courierCode: 'FlashLive',
+        from: bangkok(),
+        to: chiangmai(),
+        parcel: new Parcel(1.0, 14, 20, 6),
+        codAmount: 590,
+    ));
+});
+
+test('a product may describe its size either way', function () {
+    $transport = new FakeTransport([json(['status' => true, 'data' => ['tracking_number' => 'TH1']])]);
+    $client = new Client('token', Client::PRODUCTION, $transport);
+
+    $client->createOrder(new CreateOrder(
+        customOrderId: 'SHOP-1004',
+        courierCode: 'FlashLive',
+        from: bangkok(),
+        to: chiangmai(),
+        parcel: new Parcel(1.0, 14, 20, 6),
+        codAmount: 1200,
+        products: [
+            new Product('ALBUM 1', 1, 1200, 0.3, 'BLUE', widthCm: 12, lengthCm: 12, heightCm: 2),
+            new Product('ALBUM 2', 2, 600, 0.3, 'RED', size: '12 x 12 x 2'),
+        ],
+    ));
+
+    $sent = json_decode($transport->calls[0]['body'], true);
+    assertSame(12, (int) $sent['products'][0]['product_width'], 'dimensions are sent when size is absent');
+    assertSame(false, isset($sent['products'][0]['product_size']));
+    assertSame('12 x 12 x 2', $sent['products'][1]['product_size'], 'size replaces the dimensions');
+    assertSame(false, isset($sent['products'][1]['product_width']));
+    assertSame('BLUE', $sent['products'][0]['product_color']);
+    assertSame(0.3, (float) $sent['products'][0]['product_weight']);
+});
+
+test('a product without a size or dimensions is rejected', function () {
+    assertThrows(InvalidArgumentException::class, fn () => new Product('ALBUM', 1, 1200, 0.3, 'BLUE'));
+});
+
+test('every field iShip requires on a product is checked', function () {
+    $cases = [
+        'no name' => fn () => new Product('', 1, 1200, 0.3, 'BLUE', size: '1 x 1 x 1'),
+        'no colour' => fn () => new Product('ALBUM', 1, 1200, 0.3, '', size: '1 x 1 x 1'),
+        'no weight' => fn () => new Product('ALBUM', 1, 1200, 0, 'BLUE', size: '1 x 1 x 1'),
+        'no price' => fn () => new Product('ALBUM', 1, 0, 0.3, 'BLUE', size: '1 x 1 x 1'),
+        'quantity 0' => fn () => new Product('ALBUM', 0, 1200, 0.3, 'BLUE', size: '1 x 1 x 1'),
+        'quantity 1000' => fn () => new Product('ALBUM', 1000, 1200, 0.3, 'BLUE', size: '1 x 1 x 1'),
+        'size too long' => fn () => new Product('ALBUM', 1, 1200, 0.3, 'BLUE', size: str_repeat('x', 129)),
+        'zero dimension' => fn () => new Product('ALBUM', 1, 1200, 0.3, 'BLUE', widthCm: 12, lengthCm: 12, heightCm: 0),
+    ];
+
+    foreach ($cases as $name => $case) {
+        try {
+            $case();
+            throw new Exception("{$name}: expected InvalidArgumentException, nothing was thrown");
+        } catch (InvalidArgumentException) {
+            // expected
+        }
+    }
 });
 
 test('insurance requires a declared value', function () {

@@ -2,9 +2,14 @@
 
 Requires Node 18+ (uses the built-in `fetch`). TypeScript types included.
 
+npm cannot install from a subdirectory of a git repository, so install the
+tarball attached to a release:
+
 ```bash
-npm install @iship/sdk
+npm install https://github.com/mcomtech/iship-sdk/releases/download/v1.0.0/iship-sdk-1.0.0.tgz
 ```
+
+Building it yourself works too: `cd node && npm install && npm pack`.
 
 ## Quick start
 

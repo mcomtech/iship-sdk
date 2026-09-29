@@ -1,3 +1,3 @@
-module bitbucket.org/project-iship/iship-sdk/go
+module github.com/mcomtech/iship-sdk/go
 
 go 1.21

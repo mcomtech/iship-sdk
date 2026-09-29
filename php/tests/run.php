@@ -9,7 +9,7 @@ declare(strict_types=1);
  * app.iship.cloud (no token, no data created); skip them with ISHIP_SKIP_LIVE=1.
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../../vendor/autoload.php';
 
 use IShip\Address;
 use IShip\Category;

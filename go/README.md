@@ -3,8 +3,11 @@
 Requires Go 1.21+. No dependencies outside the standard library.
 
 ```bash
-go get bitbucket.org/project-iship/iship-sdk/go
+go get github.com/mcomtech/iship-sdk/go@latest
 ```
+
+The module lives in the `go/` subdirectory of the repository, so its version tags
+are prefixed: `go/v1.0.0`, not `v1.0.0`.
 
 ## Quick start
 
@@ -17,7 +20,7 @@ import (
 	"os"
 	"sort"
 
-	iship "bitbucket.org/project-iship/iship-sdk/go"
+	iship "github.com/mcomtech/iship-sdk/go"
 )
 
 func main() {

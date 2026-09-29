@@ -3,7 +3,8 @@
 Requires PHP 8.1+ with the curl and json extensions. No other dependencies.
 
 ```bash
-composer require iship/sdk
+composer config repositories.iship vcs https://github.com/mcomtech/iship-sdk
+composer require iship/sdk:^1.0
 ```
 
 ## Quick start

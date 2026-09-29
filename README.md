@@ -40,24 +40,23 @@ The Go module lives in the `go/` subdirectory, so its version tags are prefixed:
 
 ### Node
 
-npm cannot install from a subdirectory of a git repository, so install the
-tarball attached to a release:
-
 ```bash
-npm install https://github.com/mcomtech/iship-sdk/releases/download/v1.0.0/iship-sdk-1.0.0.tgz
+npm install github:mcomtech/iship-sdk#v1.0.0
 ```
 
 ```ts
 import { IShipClient } from "@iship/sdk";
 ```
 
-To pin a different version, change the tag in the URL. Building it yourself works
-too: `cd node && npm install && npm pack`.
+Installing from git compiles the TypeScript as part of `npm install`, so the
+machine running it needs network access and Node 18+. To pin another version,
+change the tag. For an offline or air-gapped install, build a tarball yourself
+with `cd node && npm install && npm pack` and commit it to your own artifact store.
 
 ## Upgrading
 
 Each release is tagged `v<version>` (plus `go/v<version>` for Go). `composer update
-iship/sdk` and `go get -u` pick up new tags; for Node, install the newer tarball URL.
+iship/sdk` and `go get -u` pick up new tags; for Node, install the newer tag.
 
 ## Getting a token
 

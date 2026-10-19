@@ -1,0 +1,38 @@
+{
+  "name": "@iship/connect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral core for connecting shops (Shopify, TikTok Shop, ...) to iShip",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./secret": {
+      "types": "./dist/secret.d.ts",
+      "default": "./dist/secret.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "test": "tsc && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@iship/sdk": "file:../../node"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,10 @@
+# The Shopify app's Dockerfile builds from the repository root.
+.git
+**/node_modules
+**/dist
+**/build
+**/.cache
+**/.react-router
+**/.env
+**/*.sqlite
+**/*.sqlite-journal

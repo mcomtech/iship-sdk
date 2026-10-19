@@ -1,0 +1,52 @@
+# This file stores configurations for your Shopify app.
+# Run `npm run config:link` to connect it to the app in your Partner Dashboard,
+# which fills in client_id, name and the URLs.
+client_id = ""
+
+[access_scopes]
+# Keep in step with SHOPIFY_SCOPES in integrations/connect/src/shopify.ts.
+# Name, address and phone on orders are protected customer data: request
+# access for them in the Partner Dashboard before submitting for review.
+scopes = "read_orders,write_merchant_managed_fulfillment_orders,write_fulfillments"
+
+[webhooks]
+api_version = "2026-10"
+
+  # Handled by: /app/routes/webhooks.app.uninstalled.tsx
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  # Handled by: /app/routes/webhooks.app.scopes_update.tsx
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  # Handled by: /app/routes/webhooks.orders.create.tsx
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create" ]
+  uri = "/webhooks/orders/create"
+
+  # Handled by: /app/routes/webhooks.orders.paid.tsx
+  [[webhooks.subscriptions]]
+  topics = [ "orders/paid" ]
+  uri = "/webhooks/orders/paid"
+
+  # Handled by: /app/routes/webhooks.orders.cancelled.tsx
+  [[webhooks.subscriptions]]
+  topics = [ "orders/cancelled" ]
+  uri = "/webhooks/orders/cancelled"
+
+  # Mandatory compliance topics for public apps.
+  # See: https://shopify.dev/docs/apps/build/privacy-law-compliance
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/data_request"
+  compliance_topics = ["customers/data_request"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/redact"
+  compliance_topics = ["customers/redact"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/shop/redact"
+  compliance_topics = ["shop/redact"]

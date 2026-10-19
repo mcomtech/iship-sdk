@@ -1,0 +1,7 @@
+# Used only when the build context is this directory. The Dockerfile expects
+# the repository root as context; see the comment at its top.
+.cache
+build
+node_modules
+.env
+prisma/dev.sqlite*

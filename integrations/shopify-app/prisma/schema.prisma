@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// ---------------------------------------------------------------- iShip
+
+// One row per installed shop: how the merchant ships.
+model ShopSettings {
+  shop                String   @id
+  // The merchant's iShip API token, sealed with ISHIP_ENCRYPTION_KEY.
+  ishipToken          String?
+  // "production" or "uat".
+  environment         String   @default("production")
+  originName          String   @default("")
+  originPhone         String   @default("")
+  originAddress       String   @default("")
+  originSubdistrict   String   @default("")
+  originDistrict      String   @default("")
+  originProvince      String   @default("")
+  originZipcode       String   @default("")
+  courierCode         String   @default("AutoCourier")
+  boxWidthCm          Float    @default(20)
+  boxLengthCm         Float    @default(30)
+  boxHeightCm         Float    @default(10)
+  defaultItemGrams    Int      @default(500)
+  categoryId          Int      @default(99)
+  // Create shipments as soon as an order is ready, instead of waiting for the merchant.
+  autoCreate          Boolean  @default(false)
+  notifyCustomer      Boolean  @default(true)
+  // Payment gateway names that mean cash on delivery, one per line.
+  codGateways         String   @default("Cash on Delivery (COD)\nCOD\nเก็บเงินปลายทาง")
+  // Customer-facing tracking page, with {tracking} where the number goes.
+  trackingUrlTemplate String   @default("")
+  // Path segment of this shop's iShip status callback URL.
+  callbackSecret      String   @unique
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// One row per Shopify order this app has seen. Holds no customer data except
+// corrections the merchant typed, which customers/redact erases.
+model Shipment {
+  id             String    @id @default(cuid())
+  shop           String
+  orderId        String
+  orderName      String
+  // See app/iship/states.ts.
+  state          String
+  attempt        Int       @default(1)
+  // JSON list of problems that stop the order from shipping.
+  problems       String?
+  // JSON list of non-blocking notes, such as a guessed subdistrict.
+  warnings       String?
+  error          String?
+  // JSON corrections to the recipient address.
+  overrides      String?
+  // True from just before a create call until its outcome is known. A crash
+  // in between leaves it set, so the next attempt checks for a parcel first.
+  uncertain      Boolean   @default(false)
+  firstTriedAt   DateTime?
+  tries          Int       @default(0)
+  runAfter       DateTime  @default(now())
+  lockedUntil    DateTime?
+  trackingNumber String?
+  courierCode    String?
+  fulfillmentId  String?
+  progress       String?
+  ishipStatus    Int?
+  syncAfter      DateTime?
+  orderCancelled Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([shop, orderId])
+  @@index([state, runAfter])
+  @@index([syncAfter])
+  @@index([shop, trackingNumber])
+}
+
+// customers/data_request webhooks, kept until someone answers them.
+model ComplianceRequest {
+  id        String    @id @default(cuid())
+  shop      String
+  topic     String
+  // Order and customer ids only; no contact details.
+  reference String
+  createdAt DateTime  @default(now())
+  handledAt DateTime?
+}

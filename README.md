@@ -11,9 +11,6 @@ Official client libraries for the iShip shipping API (`https://app.iship.cloud`)
 All three expose the same operations, the same field names and the same error
 behaviour, so an integration can be ported between them by translating syntax only.
 
-Ready-made connectors for shop platforms, starting with a Shopify app, live in
-[`integrations/`](integrations).
-
 ## Install
 
 The three SDKs live in one repository, so each language installs it a little
